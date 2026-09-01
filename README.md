@@ -32,29 +32,34 @@ MedPehchaan AI+ is a sophisticated web application that leverages state-of-the-a
 
 ### 🎯 Key Capabilities
 
-- **📝 Multi-format Input**: Process typed text, PDFs, CSVs, Excel files, and JSONL datasets
-- **🔍 Advanced NER**: Biomedical entity extraction using transformer models
-- **📊 Risk Assessment**: Intelligent patient risk classification
-- **💡 Clinical Insights**: AI-generated medical insights and recommendations
-- **📋 Automated Summaries**: Concise, entity-grounded clinical summaries
+- **📝 Multi-format Input**: Process typed text, PDFs, CSVs, Excel files, JSONL datasets, and images with OCR
+- **🔍 Advanced NER**: Biomedical entity extraction (Disease, Symptom, Medication, Procedure) using transformer models
+- **📊 Risk Assessment**: Rule-based patient risk classification (High/Medium/Low)
+- **💡 Clinical Insights**: Pattern-based medical insights and clinical observations
+- **📋 Automated Summaries**: Entity-grounded clinical summaries with evidence linking
+- **🖼️ Image Processing**: OCR support for clinical documents and handwritten notes
 - **🎨 Modern UI**: Beautiful, responsive interface with real-time processing
-- **📈 Analytics Dashboard**: Comprehensive patient and aggregate analytics
+- **📈 Analytics Dashboard**: Comprehensive patient-wise and aggregate analytics
 
 ---
 
 ## ✨ Features
 
 ### 🤖 AI-Powered Analysis
-- **Biomedical NER**: Extracts diseases, symptoms, medications, and procedures
-- **Confidence Scoring**: Quality assessment for all extracted entities
-- **Noise Filtering**: Removes low-quality and irrelevant text spans
-- **Context Preservation**: Maintains clinical meaning during processing
+- **Biomedical NER**: Transformer-based extraction of diseases, symptoms, medications, and procedures
+- **Confidence Scoring**: Quality assessment with confidence thresholds for all extracted entities
+- **Noise Filtering**: Removes low-confidence and irrelevant text spans (threshold: 50%)
+- **Context Preservation**: Maintains clinical meaning through intelligent preprocessing
+- **Rule-Based Risk Classification**: Evidence-based triage with configurable risk thresholds
+- **Pattern-Based Insights**: Generates clinical observations from extracted entity patterns
 
 ### 📊 Data Processing
-- **Large Dataset Support**: Handles 100k+ patient records efficiently
-- **Chunked Processing**: Memory-optimized for large-scale analysis
-- **Multiple Formats**: CSV, TSV, Excel, PDF, TXT, JSONL support
-- **Streaming Mode**: For extremely large datasets
+- **Large Dataset Support**: Handles 100k+ patient records with optimized chunking
+- **Memory-Optimized Batching**: Adaptive batch sizes based on dataset size
+- **Multiple Input Formats**: CSV, TSV, Excel, PDF, TXT, JSONL support
+- **Image Processing**: OCR-based text extraction from images and scanned documents
+- **Streaming Mode**: For extremely large datasets with configurable flush intervals
+- **Multiprocessing Support**: Parallel processing with worker pool optimization
 
 ### 🎨 User Experience
 - **Modern UI**: Gradient-based design with glassmorphism effects
@@ -74,24 +79,40 @@ MedPehchaan AI+ is a sophisticated web application that leverages state-of-the-a
 
 ```
 MedPehchaan AI+
-├── 🎨 UI Layer (Streamlit)
-│   ├── Modern Web Interface
-│   ├── Real-time Processing
-│   └── Interactive Dashboards
-├── 🧠 Intelligence Engine
-│   ├── Biomedical NER
-│   ├── Risk Assessment
-│   ├── Insight Generation
-│   └── Summary Creation
-├── 🔧 Processing Pipeline
-│   ├── Text Preprocessing
-│   ├── Entity Extraction
-│   ├── Post-processing
-│   └── Report Generation
-└── 📊 Analytics & Reporting
-    ├── Patient Analysis
-    ├── Aggregate Reports
-    └── Export Functions
+├── 🎨 UI Layer (ui.py - Streamlit)
+│   ├── Multi-format Input Handling
+│   ├── Real-time Processing with Progress Tracking
+│   ├── Interactive Patient & Aggregate Dashboards
+│   └── Report Export (PDF, CSV)
+│
+├── 🧠 Intelligence Engine (intelligence.py)
+│   ├── Unified Processing Pipeline
+│   ├── Batch Processing for Scalability
+│   ├── Memory-Optimized Streaming
+│   └── Result Aggregation & Analytics
+│
+├── 📝 Text Processing Pipeline
+│   ├── preprocessing.py: Text normalization & patient record splitting
+│   ├── ner_engine.py: Transformer-based biomedical NER
+│   ├── postprocessing.py: Confidence filtering & entity validation
+│   └── text_utils.py: Text utilities
+│
+├── 🎯 Clinical Analysis Engines
+│   ├── risk_engine.py: Rule-based risk classification
+│   ├── insight_engine.py: Pattern-based insight generation
+│   ├── summary_engine.py: Entity-grounded summary generation
+│   └── evaluation.py: Metrics computation & validation
+│
+├── 📊 Input/Output Processing
+│   ├── pdf_utils.py: PDF text extraction & processing
+│   ├── image_utils.py: Image preprocessing & OCR
+│   ├── report_utils.py: PDF & CSV report generation
+│   └── utils.py: General utilities
+│
+└── ⚙️ Configuration & Setup
+    ├── config.py: Model configs, entity labels, risk rules, risk thresholds
+    ├── requirements.txt: Dependencies
+    └── app.py: Streamlit entry point
 ```
 
 ---
@@ -145,45 +166,72 @@ MedPehchaan AI+
    - `.tsv` - Tab-separated values
    - `.xlsx` - Excel spreadsheets
    - `.jsonl` - JSON Lines format
+3. **🖼️ Image Upload**: Clinical document images and scanned notes:
+   - `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp` - OCR extraction
+4. **🔄 Combined Input**: Mix any of the above for comprehensive analysis
 
 ### Analysis Workflow
 
-1. **Input Selection**: Choose your clinical text source
-2. **Processing**: AI analyzes text for medical entities
-3. **Risk Assessment**: Automatic risk level classification
-4. **Insights Generation**: AI-powered clinical insights
-5. **Report Generation**: Downloadable PDF/CSV reports
+1. **Input Preparation**: Accept text, files, or images
+2. **Text Extraction**: Convert PDFs, images (OCR), and other formats to clean text
+3. **Preprocessing**: Normalize text, detect and split patient records
+4. **Entity Extraction**: Biomedical NER with confidence scoring
+5. **Risk Assessment**: Rule-based triage using disease/symptom thresholds
+6. **Insight Generation**: Pattern-based clinical observations
+7. **Summary Generation**: Entity-grounded clinical summary creation
+8. **Report Generation**: Downloadable PDF/CSV patient and aggregate reports
 
 ### Output Formats
 
-- **Patient Reports**: Individual patient analysis with entities, risks, and insights
-- **Aggregate Reports**: Population-level analytics and trends
-- **Visual Analytics**: Interactive charts and dashboards
-- **Export Options**: PDF reports and CSV data exports
+- **Patient Reports**: Individual analysis including:
+  - Extracted entities with confidence scores
+  - Risk classification with evidence
+  - Pattern-based clinical insights
+  - Entity-grounded summary
+  - Highlighted clinical text with entity annotations
+  
+- **Aggregate Analytics**: Population-level analysis
+  - Risk distribution across patient cohort
+  - Most common diseases, symptoms, medications, procedures
+  - Entity frequency analysis
+  - Visual charts and statistics
+  
+- **Export Options**: 
+  - PDF reports with formatted clinical findings
+  - CSV data export for downstream analysis
+  - Interactive visualizations with Plotly
 
 ---
 
 ## 🛠️ Technical Details
 
 ### Dependencies
-- **streamlit**: Modern web app framework
-- **transformers**: Hugging Face transformers for AI models
-- **pandas**: Data manipulation and analysis
-- **plotly**: Interactive visualizations
-- **PyPDF2**: PDF text extraction
-- **openpyxl**: Excel file processing
+- **streamlit** (v1.35+): Modern web app framework
+- **transformers** (v4.41+): Hugging Face transformers for biomedical NER
+- **torch** (v2.2+): Deep learning framework
+- **pandas** (v2.2+): Data manipulation and analysis
+- **plotly** (v5.0+): Interactive visualizations
+- **pypdf** (v4.2+): PDF text extraction
+- **openpyxl** (v3.1+): Excel file processing
+- **easyocr** (v1.6+): OCR for image-based clinical documents
+- **opencv-python** (v4.10+): Image processing
+- **beautifulsoup4** (v4.12+): HTML parsing
+- **reportlab** (v4.2+): PDF report generation
 
 ### AI Models
-- **Biomedical NER**: Clinical entity recognition models
-- **Risk Classification**: Rule-based and ML-powered assessment
-- **Text Summarization**: Advanced summarization techniques
-- **Insight Generation**: Pattern-based clinical insights
+- **Primary Biomedical NER**: `d4data/biomedical-ner-all` (main entity extraction model)
+- **Clinical NER Fallback**: `samrawal/bert-base-uncased_clinical-ner` (alternative if primary fails)
+- **Risk Classification**: Rule-based system with configurable disease/symptom thresholds
+- **Summarization**: Entity-based pattern matching (non-generative)
+- **Insight Generation**: Template-based clinical observations from extracted patterns
 
-### Performance
-- **Large Dataset Support**: Optimized for 100k+ records
-- **Memory Efficient**: Chunked processing for scalability
-- **Fast Processing**: GPU acceleration support
-- **Real-time Updates**: Live progress indicators
+### Performance Features
+- **Large Dataset Support**: Optimized for 100k+ records with adaptive chunking
+- **Memory Efficient**: Streaming mode + garbage collection for large-scale analysis
+- **GPU Support**: Automatic CUDA detection and acceleration when available
+- **Batch Processing**: Configurable batch sizes (8-128) based on dataset size
+- **Real-time Updates**: Live progress indicators with streaming output
+- **Multiprocessing**: Worker pool for parallel extraction
 
 ---
 
