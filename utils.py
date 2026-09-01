@@ -6,16 +6,20 @@ import pandas as pd
 from config import ENTITY_COLORS, INPUT_MODES
 
 
-def resolve_input_text(typed_text: str, uploaded_text: str, input_mode: str) -> Tuple[str, str]:
+def resolve_input_text(typed_text: str, uploaded_text: str, image_text: str = "", input_mode: str = "Use typed text only") -> Tuple[str, str]:
     typed = (typed_text or "").strip()
     uploaded = (uploaded_text or "").strip()
+    image = (image_text or "").strip()
     mode = input_mode if input_mode in INPUT_MODES else INPUT_MODES[0]
 
     if mode == "Use typed text only":
         return typed, "typed_text_only"
     if mode == "Use uploaded file only":
         return uploaded, "uploaded_file_only"
-    return " ".join(part for part in [typed, uploaded] if part).strip(), "combined_text"
+    if mode == "Use uploaded image only":
+        return image, "uploaded_image_only"
+    # Combine all inputs
+    return " ".join(part for part in [typed, uploaded, image] if part).strip(), "combined_inputs"
 
 
 def build_entity_table(entities: List[Dict[str, object]]) -> pd.DataFrame:

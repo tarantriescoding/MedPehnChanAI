@@ -3,9 +3,12 @@ import io
 import traceback
 from typing import Dict, List, Tuple
 
+import cv2
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+
+from image_utils import detect_edges, preprocess_image, read_image, extract_text_from_image
 
 from config import (
     APP_DISCLAIMER,
@@ -34,6 +37,26 @@ from pdf_utils import extract_text_from_uploaded_file
 from preprocessing import normalize_patient_id, split_text_into_patient_records
 from report_utils import generate_patient_csv, generate_patient_pdf
 from utils import build_entity_table, resolve_input_text
+
+
+# ===== HELPER FUNCTIONS (Defined early for Streamlit caching) =====
+
+def _normalize_search_keywords(search_term: str) -> List[str]:
+    """
+    Normalize search term into a list of keywords for searching.
+    
+    Args:
+        search_term: Raw search term from user input
+        
+    Returns:
+        List of lowercase keywords
+    """
+    if not search_term or not isinstance(search_term, str):
+        return []
+    
+    # Split by spaces and convert to lowercase, filter empty strings
+    keywords = [keyword.strip().lower() for keyword in search_term.split() if keyword.strip()]
+    return keywords
 
 
 TEXT_COLUMN_CANDIDATES = [
@@ -162,11 +185,13 @@ def build_selected_records(
     uploaded_file,
     uploaded_preview_text: str,
     uploaded_dataframe: pd.DataFrame | None,
+    uploaded_image_text: str,
     input_mode: str,
 ) -> Tuple[List[Dict[str, object]], str, Dict[str, object]]:
     typed = (typed_text or "").strip()
     typed_records = split_text_into_patient_records(typed, source_name="typed_text") if typed else []
     uploaded_records: List[Dict[str, object]] = []
+    image_records: List[Dict[str, object]] = []
     upload_meta: Dict[str, object] = {"text_columns": [], "patient_id_column": None}
 
     if uploaded_file is not None:
@@ -181,14 +206,20 @@ def build_selected_records(
                 else []
             )
 
-    selected_text, input_source = resolve_input_text(typed, uploaded_preview_text, input_mode)
+    # Process extracted image text
+    if (uploaded_image_text or "").strip():
+        image_records = split_text_into_patient_records(uploaded_image_text, source_name="uploaded_image")
+
+    selected_text, input_source = resolve_input_text(typed, uploaded_preview_text, uploaded_image_text, input_mode)
     if input_mode == "Use typed text only":
         return typed_records, input_source, upload_meta
     if input_mode == "Use uploaded file only":
         return uploaded_records, input_source, upload_meta
+    if input_mode == "Use uploaded image only":
+        return image_records, input_source, upload_meta
     if not selected_text.strip():
         return [], "combined_inputs", upload_meta
-    return typed_records + uploaded_records, "combined_inputs", upload_meta
+    return typed_records + uploaded_records + image_records, "combined_inputs", upload_meta
 
 
 def _render_model_status(model_meta: Dict[str, object]) -> None:
@@ -365,8 +396,6 @@ def _render_entity_badges(entities: List[Dict[str, object]]) -> str:
         badges.append(f'<span class="entity-badge {css_class}" title="Confidence: {confidence:.2f}">{text}</span>')
     
     return "".join(badges)
-    query = (search_input or "").lower().strip()
-    return [keyword.strip() for keyword in query.split(",") if keyword.strip()]
 
 
 def _patient_search_blob(patient_result: Dict[str, object]) -> str:
@@ -419,6 +448,7 @@ def _build_input_signature(
     uploaded_file,
     uploaded_text: str,
     uploaded_dataframe: pd.DataFrame | None,
+    uploaded_image_text: str,
     input_mode: str,
 ) -> Tuple[object, ...]:
     file_name = ""
@@ -434,6 +464,7 @@ def _build_input_signature(
         file_size,
         (uploaded_text or "").strip(),
         dataframe_shape,
+        (uploaded_image_text or "").strip(),
         input_mode,
     )
 
@@ -455,6 +486,7 @@ def run_app() -> None:
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
+    /* Light mode - default */
     /* Main background with clean light */
     .main {
         background: #F8FAFC;
@@ -464,7 +496,7 @@ def run_app() -> None:
         background: #F8FAFC;
     }
 
-    /* Title styling */
+    /* Title styling - light mode */
     h1 {
         font-family: 'Poppins', sans-serif;
         font-weight: 700;
@@ -509,6 +541,7 @@ def run_app() -> None:
         border: 2px solid #E5E7EB;
         padding: 16px 20px;
         background: white;
+        color: #1a202c;
         font-size: 16px;
         transition: all 0.3s ease;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -686,6 +719,145 @@ def run_app() -> None:
         line-height: 1.6;
     }
 
+    /* ===== DARK MODE SUPPORT ===== */
+    @media (prefers-color-scheme: dark) {
+        .main, .stAppViewContainer {
+            background: #0F172A;
+        }
+
+        h1 {
+            color: #60A5FA;
+        }
+
+        h2, h3 {
+            color: #93C5FD;
+        }
+
+        p, span, div, body {
+            color: #E2E8F0;
+        }
+
+        /* Input fields - dark mode */
+        .stTextInput>div>div>input,
+        .stTextArea>div>div>textarea,
+        .stSelectbox>div>div>div>div>select {
+            background: #1E293B;
+            color: #E2E8F0;
+            border-color: #334155;
+        }
+
+        .stTextInput>div>div>input::placeholder,
+        .stTextArea>div>div>textarea::placeholder {
+            color: #94A3B8;
+        }
+
+        /* File uploader - dark mode */
+        .stFileUploader {
+            background: #1E293B;
+            border-color: #334155;
+        }
+
+        .stFileUploader:hover {
+            background: #0F172A;
+            border-color: #3B82F6;
+        }
+
+        /* Card - dark mode */
+        .card {
+            background: #1E293B;
+            border-color: #334155;
+            color: #E2E8F0;
+        }
+
+        /* Expander - dark mode */
+        .stExpander {
+            background: #1E293B;
+            border-color: #334155;
+        }
+
+        .stExpander > div:first-child {
+            background: #3B82F6;
+            color: white;
+        }
+
+        /* Tab styling - dark mode */
+        .stTabs [data-baseweb="tab-list"] {
+            background: #1E293B;
+            border-color: #334155;
+        }
+
+        /* Scrollbar - dark mode */
+        ::-webkit-scrollbar-track {
+            background: #0F172A;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3B82F6;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #60A5FA;
+        }
+
+        /* Risk boxes - dark mode */
+        .risk-high { 
+            background-color: rgba(220, 38, 38, 0.2); 
+            border-left-color: #EF4444; 
+            color: #FCA5A5; 
+        }
+
+        .risk-medium { 
+            background-color: rgba(217, 119, 6, 0.2); 
+            border-left-color: #F59E0B; 
+            color: #FBBF24; 
+        }
+
+        .risk-low { 
+            background-color: rgba(34, 197, 94, 0.2); 
+            border-left-color: #4ADE80; 
+            color: #86EFAC; 
+        }
+
+        /* Insights - dark mode */
+        .insight-item {
+            background: rgba(59, 130, 246, 0.15);
+            border-left-color: #60A5FA;
+        }
+
+        /* Summary box - dark mode */
+        .summary-box {
+            background: #1E293B;
+            border-color: #334155;
+            color: #E2E8F0;
+        }
+
+        /* Alert styling - dark mode */
+        .stAlert {
+            background: #1E293B;
+            color: #E2E8F0;
+        }
+
+        /* Success/Warning/Error - dark mode */
+        .stSuccess {
+            background-color: rgba(34, 197, 94, 0.15) !important;
+            color: #86EFAC !important;
+        }
+
+        .stWarning {
+            background-color: rgba(249, 115, 22, 0.15) !important;
+            color: #FDBA74 !important;
+        }
+
+        .stError {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            color: #FCA5A5 !important;
+        }
+
+        .stInfo {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #93C5FD !important;
+        }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -752,6 +924,7 @@ def run_app() -> None:
             )
 
         uploaded_text = ""
+        uploaded_image_text = ""
         uploaded_dataframe = None
         uploaded_file = None
         with right:
@@ -785,8 +958,49 @@ def run_app() -> None:
                 except Exception as exc:
                     st.error(f"❌ Error reading file: {exc}")
 
+            st.markdown("### 🖼️ Upload Image")
+            uploaded_image = st.file_uploader(
+                "",
+                key="uploaded_image_input",
+                type=["png", "jpg", "jpeg", "bmp"],
+                help="Upload prescription or medical document images. Text will be extracted automatically.",
+                label_visibility="collapsed"
+            )
+
+            if uploaded_image is not None:
+                try:
+                    image = read_image(uploaded_image)
+                    processed = preprocess_image(image)
+                    edges = detect_edges(processed)
+                    
+                    st.success("✅ Image loaded and processed")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Original image")
+                    with col2:
+                        st.image(edges, use_container_width=True, caption="Edge detection", clamp=True, channels="GRAY")
+                    
+                    # Extract text from image using OCR
+                    with st.spinner("Extracting text from image..."):
+                        uploaded_image_text = extract_text_from_image(image)
+                    
+                    if uploaded_image_text.strip():
+                        with st.expander("👁️ Extracted Text from Image", expanded=False):
+                            st.write((uploaded_image_text[:1200] + "...") if len(uploaded_image_text) > 1200 else uploaded_image_text)
+                        st.success("✅ Text extracted from image successfully")
+                    else:
+                        st.info("ℹ️ No text detected in image - it may be too blurry or contain only medical imagery")
+                except Exception as exc:
+                    st.error(f"❌ Image processing failed: {exc}")
+
         # Input mode selection with better styling
-        if typed_text.strip() and (uploaded_text.strip() or uploaded_dataframe is not None):
+        has_typed = typed_text.strip()
+        has_file = uploaded_text.strip() or uploaded_dataframe is not None
+        has_image = (uploaded_image_text or "").strip()
+        
+        input_sources = sum([bool(has_typed), bool(has_file), bool(has_image)])
+        
+        if input_sources >= 2:
             st.markdown("### 🎯 Input Mode")
             input_mode = st.radio(
                 "",
@@ -795,12 +1009,15 @@ def run_app() -> None:
                 help="Choose how to combine your inputs",
                 label_visibility="collapsed"
             )
-        elif typed_text.strip():
+        elif has_typed:
             input_mode = "Use typed text only"
             st.info("📝 Using typed text only")
-        elif uploaded_text.strip() or uploaded_dataframe is not None:
+        elif has_file:
             input_mode = "Use uploaded file only"
             st.info("📎 Using uploaded file only")
+        elif has_image:
+            input_mode = "Use uploaded image only"
+            st.info("🖼️ Using uploaded image only")
         else:
             input_mode = "Use typed text only"
 
@@ -816,6 +1033,7 @@ def run_app() -> None:
         uploaded_file=uploaded_file,
         uploaded_text=uploaded_text,
         uploaded_dataframe=uploaded_dataframe,
+        uploaded_image_text=uploaded_image_text,
         input_mode=input_mode,
     )
 
@@ -826,13 +1044,14 @@ def run_app() -> None:
                 uploaded_file=uploaded_file,
                 uploaded_preview_text=uploaded_text,
                 uploaded_dataframe=uploaded_dataframe,
+                uploaded_image_text=uploaded_image_text,
                 input_mode=input_mode,
             )
 
             if not patient_records:
                 st.session_state["analysis_ready"] = False
                 st.session_state["analysis_results"] = None
-                st.warning("No patient records found. Please enter text or upload a valid TXT, PDF, or CSV file.")
+                st.warning("No patient records found. Please enter text or upload a valid text taken from image, TXT, PDF, or CSV file.")
                 return
 
             batch_size, processing_chunk_size, use_streaming = _resolve_processing_settings(len(patient_records))

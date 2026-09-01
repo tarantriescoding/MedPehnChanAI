@@ -13,7 +13,8 @@ APP_DISCLAIMER = (
 INPUT_MODES = [
     "Use typed text only",
     "Use uploaded file only",
-    "Combine both",
+    "Use uploaded image only",
+    "Combine all inputs",
 ]
 
 UPLOAD_FILE_TYPES = ["txt", "pdf", "csv", "tsv", "xlsx", "jsonl"]
